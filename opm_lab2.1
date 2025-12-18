@@ -1,0 +1,32 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+#include <stdio.h>
+#include <omp.h>
+
+int main() {
+    int num_threads;
+
+    // Введення кількості потоків
+    printf("kilkist potokiv ");
+    scanf_s("%d", &num_threads);
+
+    // Встановлення кількості потоків
+    omp_set_num_threads(num_threads);
+
+    // Паралельна область
+#pragma omp parallel
+    {
+        int thread_id = omp_get_thread_num();
+
+        if (thread_id % 2 == 0) {
+            // Парні потоки
+            printf("Потік %d: Hello, OpenMP!\n", thread_id);
+        }
+        else {
+            // Непарні потоки
+            printf("Потік %d: Heorhii Pylyp\n", thread_id); 
+        }
+    }
+
+    return 0;
+}
