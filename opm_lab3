@@ -1,0 +1,112 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <omp.h>
+#include <math.h>
+#include <time.h>
+
+// Функція, інтеграл якої обчислюємо
+double f(double x) {
+    return x * x; // f(x) = x²
+}
+
+int main() {
+    int i, j;
+    unsigned intervals;
+    double a = 0.0;    // Нижня межа інтегрування
+    double b = 2.0;    // Верхня межа інтегрування
+    double h;          // Крок сітки
+    double sum = 0.0;  // Сума площ прямокутників
+    double result;     // Результат обчислення інтеграла
+    double exact_value; // Точне значення інтеграла для перевірки
+    double error;      // Похибка обчислення
+
+    // Введення кількості інтервалів
+    printf("=========================================\n");
+    printf("  Obchuslenia Integrala\n");
+    printf("        ∫[0,2] x² dx\n");
+    printf("=========================================\n\n");
+
+    printf("BBedit kilkist intervaliv (n): ");
+    scanf("%u", &intervals);
+
+    // Обчислення кроку
+    h = (b - a) / intervals;
+
+    // Точне значення інтеграла ∫x²dx = x³/3
+    exact_value = (pow(b, 3) / 3.0) - (pow(a, 3) / 3.0);
+
+    printf("\nParametry obchuslenia:\n");
+    printf("  Mezhi integruvania [%.1f, %.1f]\n", a, b);
+    printf("  kilkist intervaliv: %u\n", intervals);
+    printf("  Krok h = %.10f\n", h);
+    printf("  Tochne znachenia %.10f\n\n", exact_value);
+
+    // Засікаємо час початку обчислень
+    clock_t start_time = clock();
+
+    // ПАРАЛЕЛЬНЕ ОБЧИСЛЕННЯ ІНТЕГРАЛА
+    printf("=== Paralelne obchislenia ===\n");
+
+#pragma omp parallel private(j)
+    {
+#pragma omp for reduction(+:sum)
+        for (j = 0; j < intervals; j++) {
+            // Координата середини прямокутника
+            double x = a + (j + 0.5) * h;
+            // Обчислення площі прямокутника та додавання до суми
+            double rectangle_area = f(x) * h;
+            sum += rectangle_area;
+
+            // Виведення інформації про обчислення (тільки для перших 5 ітерацій)
+            if (j < 5) {
+                int thread_id = omp_get_thread_num();
+                printf(" potik %d: iterachia %d, x = %.6f, f(x) = %.6f, ploshia = %.10f\n",
+                    thread_id, j, x, f(x), rectangle_area);
+            }
+        }
+    }
+
+    // Засікаємо час закінчення обчислень
+    clock_t end_time = clock();
+    double computation_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+    result = sum;
+    error = fabs(result - exact_value);
+
+    // ВИВЕДЕННЯ РЕЗУЛЬТАТІВ
+    printf("\n=========================================\n");
+    printf("           resultat\n");
+    printf("=========================================\n");
+    printf("Nablizhene zhachenia iterachii: %.10f\n", result);
+    printf("Tocne znachenia:      %.10f\n", exact_value);
+    printf("absolute pohibka:            %.10f\n", error);
+    printf("Vidnosna pohibka:             %.6f%%\n", (error / exact_value) * 100);
+    printf("Time obchislenia:               %.6f second\n", computation_time);
+    printf("Kilkist potokiv:            %d\n", omp_get_max_threads());
+    printf("=========================================\n");
+
+    // АНАЛІЗ ЕФЕКТИВНОСТІ
+    printf("\n=== Analiz efektuvnosti ===\n");
+    printf("dlia n = %u intervaliv:\n", intervals);
+    printf("dlia h = %.8f, ochikuvana pohibka ~ %.8f\n",
+        h, (b - a) * h * h / 24.0 * fabs(2.0)); // f''(x) = 2 для x²
+
+    // Порівняння з послідовним обчисленням
+    if (intervals <= 1000000) {
+        printf("\n--- porivniannia z poslidovnim obchisleniam ---\n");
+
+        start_time = clock();
+        double seq_sum = 0.0;
+        for (j = 0; j < intervals; j++) {
+            double x = a + (j + 0.5) * h;
+            seq_sum += f(x) * h;
+        }
+        end_time = clock();
+        double seq_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+        printf("chas poslidovnogo obchislenia: %.6f second\n", seq_time);
+        printf("Priscorennia  (paralelne/poslidovne): %.2f raziv\n", seq_time / computation_time);
+    }
+
+    return 0;
+}
