@@ -1,0 +1,90 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <omp.h>
+
+// Функція для генерації випадкового числа в діапазоні [-100, 100]
+int randomInt() {
+    return (rand() % 201) - 100; 
+}
+
+int main() {
+    // Ініціалізація генератора випадкових чисел
+    srand(time(NULL));
+
+    // масиви та змінні
+    int A[25];
+    int B[30];
+    int X, Y;      // X = min(A), Y = max(B)
+    double Z = 0;  // Результат обчислення
+    int i;
+
+    // Заповнення масивів випадковими числами
+    printf("Array A[25]:\n");
+    for (i = 0; i < 25; i++) {
+        A[i] = randomInt();
+        printf("%4d ", A[i]);
+        if ((i + 1) % 10 == 0) printf("\n");
+    }
+
+    printf("\nArray B[30]:\n");
+    for (i = 0; i < 30; i++) {
+        B[i] = randomInt();
+        printf("%4d ", B[i]);
+        if ((i + 1) % 10 == 0) printf("\n");
+    }
+    printf("\n");
+
+    // Ініціалізація X та Y початковими значеннями
+    X = A[0]; // мінімум
+    Y = B[0]; // максимум
+
+    // ПАРАЛЕЛЬНА ОБРОБКА З ВИКОРИСТАННЯМ СЕКЦІЙ
+    printf("=== Starting parallel processing ===\n");
+
+    // Директива створює паралельну область з двома секціями
+#pragma omp parallel sections private(i)
+    {
+        // СЕКЦІЯ 1: Пошук мінімального елемента в масиві A (X)
+#pragma omp section
+        {
+            int thread_id = omp_get_thread_num();
+            printf("  Section 1 (thread %d): finding minimum in array A\n", thread_id);
+
+            for (i = 1; i < 25; i++) {
+                if (A[i] < X) {
+                    X = A[i];
+                }
+            }
+            printf("  Section 1: minimum of array A (X) = %d\n", X);
+        }
+
+        // СЕКЦІЯ 2: Пошук максимального елемента в масиві B (Y)
+#pragma omp section
+        {
+            int thread_id = omp_get_thread_num();
+            printf("  Section 2 (thread %d): finding maximum in array B\n", thread_id);
+
+            for (i = 1; i < 30; i++) {
+                if (B[i] > Y) {
+                    Y = B[i];
+                }
+            }
+            printf("  Section 2: maximum of array B (Y) = %d\n", Y);
+        }
+    } // Кінець паралельної області
+
+    printf("=== Parallel processing completed ===\n\n");
+
+    // ОБЧИСЛЕННЯ РЕЗУЛЬТАТУ
+    Z = 0.3 * (double)X * Y * Y * Y;
+
+    // ВИВЕДЕННЯ РЕЗУЛЬТАТІВ
+    printf("RESULTS:\n");
+    printf("  X (min A) = %d\n", X);
+    printf("  Y (max B) = %d\n", Y);
+    printf("  Z = 0.3 * X * Y^3 = 0.3 * %d * (%d)^3\n", X, Y);
+    printf("  Z = %.4f\n", Z);
+
+    return 0;
+}
